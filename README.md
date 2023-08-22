@@ -1,8 +1,5 @@
 #  LAMP stack built with Docker Compose
 
-![Landing Page](https://user-images.githubusercontent.com/43859895/141092846-905eae39-0169-4fd7-911f-9ff32c48b7e8.png)
-
-
 A basic LAMP stack environment built using Docker Compose. It consists of the following:
 
 * PHP
@@ -29,7 +26,7 @@ As of now, we have several different PHP versions. Use appropriate php version a
 * Run the `docker-compose up -d`.
 
 ```shell
-git clone https://github.com/sprintcube/docker-compose-lamp.git
+git clone https://gitlab.eltex.loc/OT/bitrix-eltex.git
 cd docker-compose-lamp/
 cp sample.env .env
 // modify sample.env as needed
