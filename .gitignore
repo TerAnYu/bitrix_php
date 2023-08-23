@@ -1,5 +1,7 @@
 /.env
+/.git
 /.vscode
-/data/*
+/data/mysql/*
 /logs/*
+/www
 .DS_Store
