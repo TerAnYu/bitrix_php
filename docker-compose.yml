@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   webserver:
     build: 
@@ -14,6 +12,7 @@ services:
       - ${PHP_INI-./config/php/php.ini}:/usr/local/etc/php/php.ini
       - ${VHOSTS_DIR-./config/vhosts}:/etc/apache2/sites-enabled
       - ${LOG_DIR-./logs/apache2}:/var/log/apache2
+      - ${MSMTP_CONF-./config/msmtprc}:/etc/msmtprc  
     environment:
       APACHE_DOCUMENT_ROOT: ${APACHE_DOCUMENT_ROOT-/var/www/eltex.nsk.ru}
       PMA_PORT: ${HOST_MACHINE_PMA_PORT}
@@ -27,7 +26,8 @@ services:
 
     restart: 'always'
     ports:
-      - "0.0.0.0:${HOST_MACHINE_MYSQL_PORT}:3306"
+      #- "0.0.0.0:${HOST_MACHINE_MYSQL_PORT}:3306"
+      - "3306"
     volumes: 
       - ./data/mysql:/var/lib/mysql
       - ./logs/mysql:/var/log/mysql

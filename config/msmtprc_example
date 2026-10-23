@@ -1,0 +1,17 @@
+defaults
+keepbcc on
+auth on
+tls on
+tls_starttls off
+tls_certcheck off
+port 466
+host smtp.example.com
+
+domain example.com
+
+account default
+logfile /var/log/msmtp.log
+from news@example.com
+user news@example.com
+password SecretPassword!
+

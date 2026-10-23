@@ -1,6 +1,7 @@
 /.env
 /.git
 /.vscode
+/config/msmtprc
 /data/mysql/*
 /logs/*
 /www
