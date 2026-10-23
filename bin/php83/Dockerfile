@@ -36,13 +36,13 @@ openssl && \
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Install xdebug
-RUN pecl install xdebug-3.4.2 && \
-    docker-php-ext-enable xdebug && \
-    mkdir /var/log/xdebug
+RUN git clone --branch 3.4.2 --depth 1 https://github.com/xdebug/xdebug.git /usr/src/php/ext/xdebug && \
+    docker-php-ext-install xdebug && \
+    mkdir -p /var/log/xdebug
 
 # Install redis
-RUN pecl install redis-6.0.2 && \
-    docker-php-ext-enable redis
+RUN git clone --branch 6.0.2 --depth 1 https://github.com/phpredis/phpredis.git /usr/src/php/ext/redis && \
+    docker-php-ext-install redis
 
 # Install imagick
 RUN apt-get update && \
