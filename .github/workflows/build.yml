@@ -12,7 +12,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
@@ -22,6 +21,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare image name (lowercase)
+        id: image
+        run: |
+          echo "image_name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Read PHPVERSION from .env
         id: env
@@ -34,16 +38,16 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }} bin/${{ steps.env.outputs.phpversion }}
+          docker build -t ${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }} bin/${{ steps.env.outputs.phpversion }}
 
       - name: Test PHP version
         run: |
-          docker run --rm ${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }} php -v | head -1
+          docker run --rm ${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }} php -v | head -1
 
       - name: Test Apache starts
         run: |
           CONTAINER=test-${{ steps.env.outputs.phpversion }}
-          docker run -d --name $CONTAINER -p 8080:80 ${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }}
+          docker run -d --name $CONTAINER -p 8080:80 ${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }}
           sleep 5
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 || echo "000")
           echo "HTTP status: ${HTTP_CODE}"
@@ -51,7 +55,7 @@ jobs:
 
       - name: Test required PHP extensions
         run: |
-          EXTENSIONS=$(docker run --rm ${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }} php -m)
+          EXTENSIONS=$(docker run --rm ${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }} php -m)
           for ext in pdo_mysql mysqli curl zip intl mbstring gd; do
             echo "$EXTENSIONS" | grep -qi "^${ext}$" || { echo "Missing: ${ext}"; exit 1; }
           done
@@ -59,7 +63,7 @@ jobs:
 
       - name: Test composer
         run: |
-          docker run --rm ${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }} composer --version
+          docker run --rm ${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }} composer --version
 
       - name: Login to GitHub Container Registry
         if: startsWith(github.ref, 'refs/tags/v')
@@ -69,10 +73,10 @@ jobs:
       - name: Push image to GHCR
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          IMAGE_ID=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE_ID=${{ env.REGISTRY }}/${{ steps.image.outputs.image_name }}
           TAG=${{ steps.env.outputs.phpversion }}
-          docker tag ${{ env.IMAGE_NAME }}:${TAG} ${IMAGE_ID}:${TAG}
-          docker tag ${{ env.IMAGE_NAME }}:${TAG} ${IMAGE_ID}:latest
+          docker tag ${{ steps.image.outputs.image_name }}:${TAG} ${IMAGE_ID}:${TAG}
+          docker tag ${{ steps.image.outputs.image_name }}:${TAG} ${IMAGE_ID}:latest
           docker push ${IMAGE_ID}:${TAG}
           docker push ${IMAGE_ID}:latest
 
@@ -85,11 +89,11 @@ jobs:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
           body: |
-            Docker image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }}
+            Docker image: ${{ env.REGISTRY }}/${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }}
             
             Pull with:
             ```
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }}
+            docker pull ${{ env.REGISTRY }}/${{ steps.image.outputs.image_name }}:${{ steps.env.outputs.phpversion }}
             ```
           draft: false
           prerelease: false
