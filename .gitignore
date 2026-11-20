@@ -2,6 +2,8 @@
 /.git
 /.vscode
 /config/msmtprc
+/config/vhosts/*
+!/config/vhosts/.gitkeep
 /data/mysql/*
 /logs/*
 /www

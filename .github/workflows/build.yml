@@ -1,0 +1,86 @@
+name: Build and Test
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  detect-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: versions
+        run: |
+          VERSIONS=$(ls -d bin/php*/ | xargs -I{} basename {} | jq -R -s 'split("\n") | map(select(length > 0))')
+          echo "matrix={\"php\":${VERSIONS}}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: detect-versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ matrix.php }} bin/${{ matrix.php }}
+
+      - name: Test PHP version
+        run: |
+          PHP_VER=$(echo "${{ matrix.php }}" | sed 's/php//')
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ matrix.php }} php -v | head -1
+
+      - name: Test Apache starts
+        run: |
+          docker run -d --name test-${{ matrix.php }} -p 8080:80 ${{ env.IMAGE_NAME }}:${{ matrix.php }}
+          sleep 5
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 || echo "000")
+          echo "HTTP status: ${HTTP_CODE}"
+          docker rm -f test-${{ matrix.php }}
+
+      - name: Test required PHP extensions
+        run: |
+          EXTENSIONS=$(docker run --rm ${{ env.IMAGE_NAME }}:${{ matrix.php }} php -m)
+          for ext in pdo_mysql mysqli curl zip intl mbstring gd; do
+            echo "$EXTENSIONS" | grep -qi "^${ext}$" || { echo "Missing: ${ext}"; exit 1; }
+          done
+          echo "All required extensions present ✓"
+
+      - name: Test composer
+        run: |
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ matrix.php }} composer --version
+
+      - name: Login to GitHub Container Registry
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          IMAGE_ID=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          TAG=${{ matrix.php }}
+          docker tag ${{ env.IMAGE_NAME }}:${{ matrix.php }} ${IMAGE_ID}:${TAG}
+          docker push ${IMAGE_ID}:${TAG}
+
+  summary:
+    needs: [detect-versions, build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: All versions built and pushed
+        run: echo "✅ All PHP versions built, tested and pushed to GHCR"
