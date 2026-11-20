@@ -23,8 +23,8 @@ jobs:
       - uses: actions/checkout@v4
       - id: versions
         run: |
-          VERSIONS=$(ls -d bin/php*/ | xargs -I{} basename {} | jq -R -s 'split("\n") | map(select(length > 0))')
-          echo "matrix={\"php\":${VERSIONS}}" >> "$GITHUB_OUTPUT"
+          MATRIX=$(ls -d bin/php*/ 2>/dev/null | xargs -I{} basename {} | jq -R -s 'split("\n") | map(select(length > 0)) | {php: .}')
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect-versions
