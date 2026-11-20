@@ -17,6 +17,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -63,10 +66,30 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
-      - name: Push image
+      - name: Push image to GHCR
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           IMAGE_ID=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           TAG=${{ steps.env.outputs.phpversion }}
           docker tag ${{ env.IMAGE_NAME }}:${TAG} ${IMAGE_ID}:${TAG}
+          docker tag ${{ env.IMAGE_NAME }}:${TAG} ${IMAGE_ID}:latest
           docker push ${IMAGE_ID}:${TAG}
+          docker push ${IMAGE_ID}:latest
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            Docker image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }}
+            
+            Pull with:
+            ```
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.env.outputs.phpversion }}
+            ```
+          draft: false
+          prerelease: false
