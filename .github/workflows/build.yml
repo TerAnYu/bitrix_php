@@ -23,9 +23,11 @@ jobs:
       - name: Read PHPVERSION from .env
         id: env
         run: |
-          PHPVERSION=$(grep '^PHPVERSION=' .env | cut -d'=' -f2)
+          ENV_FILE=".env"
+          [ ! -f "$ENV_FILE" ] && ENV_FILE=".env_example"
+          PHPVERSION=$(grep '^PHPVERSION=' "$ENV_FILE" | cut -d'=' -f2)
           echo "phpversion=${PHPVERSION}" >> "$GITHUB_OUTPUT"
-          echo "Building version: ${PHPVERSION}"
+          echo "Building version: ${PHPVERSION} (from ${ENV_FILE})"
 
       - name: Build Docker image
         run: |
